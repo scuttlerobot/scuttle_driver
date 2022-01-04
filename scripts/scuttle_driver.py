@@ -30,14 +30,14 @@ if __name__=="__main__":
 
             current_time = rospy.Time.now()
 
-            y, x = scuttle.getGlobalPosition()
+            x, y = scuttle.getGlobalPosition()
             vx, vth = scuttle.getMotion()
             th = scuttle.getHeading()
 
             odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
             odom_broadcaster.sendTransform(
-            (x, -y, 0.),
+            (x, y, 0.),
             odom_quat,
             current_time,
             "base_link",
@@ -48,7 +48,7 @@ if __name__=="__main__":
             odom.header.stamp = current_time
             odom.header.frame_id = "odom"
 
-            odom.pose.pose = Pose(Point(x, -y, 0.), Quaternion(*odom_quat))
+            odom.pose.pose = Pose(Point(x, y, 0.), Quaternion(*odom_quat))
 
             odom.child_frame_id = "base_link"
             odom.twist.twist = Twist(Vector3(0, vx, 0), Vector3(0, 0, 0))
