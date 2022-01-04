@@ -4,7 +4,8 @@ import rospy
 import numpy as np
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, PoseWithCovarianceStamped
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Header
 from scuttlepy import SCUTTLE
 
@@ -13,6 +14,18 @@ def commandVelocity(msg):
     # rospy.loginfo("Linear Velocity: "+str(round(msg.linear.x, 3))+" \tAngular Velocity: "+str(round(msg.angular.z, 3)))
     scuttle.setMotion([msg.linear.x, msg.angular.z])
 
+def updatePose(msg):
+
+    pose = msg.pose.pose
+    orientation = pose.orientation
+    position = pose.position
+
+    orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
+    (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+
+    scuttle.setHeading(yaw)
+    scuttle.setGlobalPosition([position.x, position.y])
+
 if __name__=="__main__":
 
     scuttle = SCUTTLE(openLoop=True)
@@ -20,7 +33,8 @@ if __name__=="__main__":
     rospy.init_node("scuttle_driver")
     r = rospy.Rate(50) # 50hz
 
-    my_subscriber = rospy.Subscriber("/cmd_vel", Twist, commandVelocity)
+    rospy.Subscriber("/cmd_vel", Twist, commandVelocity)
+    rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, updatePose)
     odom_pub = rospy.Publisher("odom", Odometry, queue_size=50)
     odom_broadcaster = tf.TransformBroadcaster()
 
