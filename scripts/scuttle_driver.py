@@ -9,12 +9,12 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Header
 from scuttlepy import SCUTTLE
 
-def commandVelocity(msg):
+def command_velocity(msg):
 
     # rospy.loginfo("Linear Velocity: "+str(round(msg.linear.x, 3))+" \tAngular Velocity: "+str(round(msg.angular.z, 3)))
     scuttle.setMotion([msg.linear.x, msg.angular.z])
 
-def updatePose(msg):
+def update_pose(msg):
 
     pose = msg.pose.pose
     orientation = pose.orientation
@@ -23,12 +23,12 @@ def updatePose(msg):
     orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
     (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
 
-    scuttle.setHeading(yaw)
-    scuttle.setGlobalPosition([position.x, position.y])
+    scuttle.set_heading(yaw)
+    scuttle.set_global_position([position.x, position.y])
 
 if __name__=="__main__":
 
-    scuttle = SCUTTLE(openLoop=True)
+    scuttle = SCUTTLE()
 
     rospy.init_node("scuttle_driver")
     r = rospy.Rate(50) # 50hz
@@ -37,8 +37,8 @@ if __name__=="__main__":
     enable_tf_publish          = rospy.get_param("/enable_tf_publish", True)
     enable_joint_state_publish = rospy.get_param("/enable_joint_state_publish", True)
 
-    rospy.Subscriber("/cmd_vel", Twist, commandVelocity)
-    rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, updatePose)
+    rospy.Subscriber("/cmd_vel", Twist, command_velocity)
+    rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, update_pose)
 
     odom_pub = rospy.Publisher("odom", Odometry, queue_size=50)
     if enable_tf_publish is True:
@@ -50,53 +50,53 @@ if __name__=="__main__":
 
             current_time = rospy.Time.now()
 
-            x, y = scuttle.getGlobalPosition()
-            vx, vth = scuttle.getMotion()
-            th = scuttle.getHeading()
+            x, y = scuttle.get_global_position()
+            velocity_x, velocity_theta = scuttle.get_motion()
+            th = scuttle.get_heading()
 
-            odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+            odometry_quaternion = tf.transformations.quaternion_from_euler(0, 0, th)
 
             # Publish TF when enable_tf_pulish is true
             if enable_tf_publish is True:
                 odom_broadcaster.sendTransform(
                 (x, y, 0.),
-                odom_quat,
+                odometry_quaternion,
                 current_time,
                 "base_link",
                 "odom"
                 )
 
-            odom = Odometry()
-            odom.header.stamp = current_time
-            odom.header.frame_id = "odom"
+            odometry = Odometry()
+            odometry.header.stamp = current_time
+            odometry.header.frame_id = "odom"
 
-            odom.pose.pose = Pose(Point(x, y, 0.), Quaternion(*odom_quat))
+            odometry.pose.pose = Pose(Point(x, y, 0.), Quaternion(*odometry_quaternion))
             # Since some ROS nodes expect non-zero pose covariance,
             # set non-zero default pose covariance matrix.
-            odom.pose.covariance = [0.01, 0, 0, 0, 0, 0,
+            odometry.pose.covariance = [0.01, 0, 0, 0, 0, 0,
                                     0, 0.01, 0, 0, 0, 0,
                                     0, 0, 0.01, 0, 0, 0,
                                     0, 0, 0, 0.1, 0, 0,
                                     0, 0, 0, 0, 0.1, 0,
                                     0, 0, 0, 0, 0, 0.1]
 
-            odom.child_frame_id = "base_link"
-            odom.twist.twist = Twist(Vector3(0, vx, 0), Vector3(0, 0, 0))
+            odometry.child_frame_id = "base_link"
+            odometry.twist.twist = Twist(Vector3(0, velocity_x, 0), Vector3(0, 0, 0))
 
-            odom_pub.publish(odom)
+            odom_pub.publish(odometry)
 
             # Publish joint state when enable_joint_state_publish is true
             if enable_joint_state_publish is True:
-                myJointStatePublisher = rospy.Publisher('joint_states', JointState, queue_size=10)
+                joint_state_publisher = rospy.Publisher('joint_states', JointState, queue_size=10)
                 # pub = rospy.Publisher('joint_states', JointState, queue_size=10)
                 # rospy.init_node('joint_state_publisher')
-                jointState = JointState()
+                joint_state = JointState()
 
-                jointState.header = Header()
+                joint_state.header = Header()
 
-                jointState.header.stamp = rospy.Time.now()
+                joint_state.header.stamp = rospy.Time.now()
 
-                jointState.name = ['l_wheel_joint',
+                joint_state.name = ['l_wheel_joint',
                                    'r_wheel_joint',
                                    'r_caster_swivel_joint',
                                    'l_caster_swivel_joint',
@@ -104,17 +104,17 @@ if __name__=="__main__":
                                    'l_caster_wheel_joint'
                                   ]
 
-                jointState.position = [scuttle.leftWheel.encoder.position * ((2 * np.pi) / scuttle.leftWheel.encoder.resolution),
-                                       scuttle.rightWheel.encoder.position * ((2 * np.pi) / scuttle.rightWheel.encoder.resolution),
+                joint_state.position = [scuttle.left_wheel.encoder.position * ((2 * np.pi) / scuttle.left_wheel.encoder.resolution),
+                                        scuttle.right_wheel.encoder.position * ((2 * np.pi) / scuttle.right_wheel.encoder.resolution),
                                        0,
                                        0,
                                        0,
                                        0
                                       ]
 
-                jointState.velocity = []
-                jointState.effort = []
-                myJointStatePublisher.publish(jointState)
+                joint_state.velocity = []
+                joint_state.effort = []
+                joint_state_publisher.publish(joint_state)
 
             r.sleep()
 
