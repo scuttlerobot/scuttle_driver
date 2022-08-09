@@ -1,4 +1,10 @@
 <launch>
+    <!--
+        'is_physical' is defined here so that calling launch files can just add the parameter
+        without checking. This moduleN
+    -->
+    <arg name="is_physical" default="true"/>
+
     <arg name="scuttle_driver_cmd_vel_topic" default="/cmd_vel" />
     <arg name="scuttle_driver_odom_topic" default="odom" />
 
