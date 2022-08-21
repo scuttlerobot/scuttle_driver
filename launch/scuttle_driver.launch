@@ -1,0 +1,23 @@
+<launch>
+    <!--
+        'is_physical' is defined here so that calling launch files can just add the parameter
+        without checking. This moduleN
+    -->
+    <arg name="is_physical" default="true"/>
+
+    <arg name="scuttle_driver_cmd_vel_topic" default="/cmd_vel" />
+    <arg name="scuttle_driver_odom_topic" default="odom" />
+
+    <!--
+        Start the supervisor node
+
+    -->
+    <node
+        name="scuttle_driver"
+        pkg="scuttle_driver"
+        type="scuttle_driver.py"
+        output="screen">
+        <remap from="cmd_vel" to="$(arg scuttle_driver_cmd_vel_topic)"/>
+        <remap from="odom" to="$(arg scuttle_driver_odom_topic)"/>
+    </node>
+</launch>
